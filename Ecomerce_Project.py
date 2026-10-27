@@ -28,7 +28,7 @@ def load_processed_data():
     df_rfm = pd.read_csv(f"{DATA_DIR}/customer_rfm.csv")
     df_co = pd.read_csv(f"{DATA_DIR}/co_occurrence_matrix.csv", index_col=0)
 
-    # Đọc file shipping nếu có, nếu chưa upload thì tạo dataframe rỗng để tránh crash app
+    # Đọc file shipping nếu có, nếu chưa upload thì tạo dataframe rỗng
     shipping_path = f"{DATA_DIR}/shipping_geo_summary.csv"
     if os.path.exists(shipping_path):
         df_ship = pd.read_csv(shipping_path)
@@ -76,5 +76,19 @@ margin = (total_profit / total_sales * 100) if total_sales > 0 else 0
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Tổng Doanh Thu", f"${total_sales:,.0f}")
-col2.metric("Tổng Lợi Nhuận", f"${total
+col2.metric("Tổng Lợi Nhuận", f"${total_profit:,.0f}")
+col3.metric("Biên Lợi Nhuận", f"{margin:.2f}%")
+col4.metric("Ước Tính Đơn Hàng", f"{total_orders:,}")
+
+st.markdown("---")
+
+# 5. Phân chia các Tabs hiển thị
+tab1, tab2, tab3, tab4 = st.tabs(
+    [
+        "📈 1. Tài chính & Xu hướng",
+        "👥 2. Phân khúc Khách hàng",
+        "🚚 3. Vận chuyển & Địa lý",
+        "🛒 4. Bán chéo (Co-occurrence)",
+    ]
+
 
