@@ -123,5 +123,5 @@ with tab1:
     with col_b:
         st.subheader("Tác động của Mức Chiết khấu (Discount)")
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(
+        ax.plot)
             
