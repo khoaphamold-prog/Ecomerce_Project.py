@@ -25,16 +25,21 @@ if not os.path.exists(DATA_DIR):
 
 # 2. Load các file CSV nhỏ vào bộ nhớ đệm (Cache)
 @st.cache_data
+# Thay vì: DATA_DIR = "processed_data"
+# Hãy sửa thành:
+DATA_DIR = "."  # Đọc trực tiếp các file CSV ở thư mục gốc
+
+
+@st.cache_data
 def load_processed_data():
     df_kpi = pd.read_csv(f"{DATA_DIR}/kpi_monthly_summary.csv")
     df_disc = pd.read_csv(f"{DATA_DIR}/discount_summary.csv")
     df_rfm = pd.read_csv(f"{DATA_DIR}/customer_rfm.csv")
-    df_ship = pd.read_csv(f"{DATA_DIR}/shipping_geo_summary.csv")
+    df_ship = pd.read_csv(
+        f"{DATA_DIR}/shipping_geo_summary.csv"
+    )  # Nhớ upload thêm file này
     df_co = pd.read_csv(f"{DATA_DIR}/co_occurrence_matrix.csv", index_col=0)
     return df_kpi, df_disc, df_rfm, df_ship, df_co
-
-
-df_kpi, df_disc, df_rfm, df_ship, df_co = load_processed_data()
 
 # 3. Thanh bộ lọc tương tác (Sidebar)
 st.sidebar.header("🔍 Bộ Lọc Dữ Liệu")
