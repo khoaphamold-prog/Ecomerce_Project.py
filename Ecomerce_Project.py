@@ -411,58 +411,65 @@ with tab7:
     st.caption("Trò chuyện cùng AI để phân tích báo cáo dữ liệu Superstore real-time.")
 
     # Ưu tiên lấy API key từ Streamlit Secrets hoặc từ ô nhập ở Sidebar
-    api_key = st.secrets.get("123456", api_key_input)
+    api_key = st.secrets.get("GEMINI_API_KEY", api_key_input)
 
     if GEMINI_AVAILABLE and api_key:
-        # xử lý model
-try:
-    model = genai.GenerativeModel("models/gemini-1.5-flash")
-except Exception:
-    model = genai.GenerativeModel("gemini-pro")
+        try:
+            genai.configure(api_key=api_key)
 
+            # Tự động thử nghiệm danh sách các model khả thi
+            model = None
+            for model_name in ["gemini-1.5-flash", "models/gemini-1.5-flash", "gemini-pro"]:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    break
+                except Exception:
+                    continue
 
-            # Ngữ cảnh dữ liệu cấp cho AI
-            context_prompt = f"""
-            Bạn là Trợ lý AI Phân tích Kinh doanh cho hệ thống Superstore E-Commerce.
-            Thông số dữ liệu hiện tại:
-            - Tổng Doanh Thu: ${total_sales:,.0f}
-            - Tổng Lợi Nhuận: ${total_profit:,.0f}
-            - Biên Lợi Nhuận TB: {avg_margin:.1f}%
-            - Sản phẩm gây âm lợi nhuận lớn nhất: {worst_sub_name} (Âm {worst_sub_loss:,.0f}$)
-            - Mức chiết khấu an toàn: <= 20%. Chiết khấu > 30% gây thâm hụt nghiêm trọng.
-            Trả lời ngắn gọn, súc tích bằng tiếng Việt, tập trung vào giải pháp kinh doanh.
-            """
+            if model is None:
+                st.error("❌ Không thể kết nối với mô hình Gemini. Vui lòng kiểm tra lại API Key!")
+            else:
+                context_prompt = f"""
+                Bạn là Trợ lý AI Phân tích Kinh doanh cho hệ thống Superstore E-Commerce.
+                Thông số dữ liệu hiện tại:
+                - Tổng Doanh Thu: ${total_sales:,.0f}
+                - Tổng Lợi Nhuận: ${total_profit:,.0f}
+                - Biên Lợi Nhuận TB: {avg_margin:.1f}%
+                - Sản phẩm gây âm lợi nhuận lớn nhất: {worst_sub_name} (Âm {worst_sub_loss:,.0f}$)
+                - Mức chiết khấu an toàn: <= 20%. Chiết khấu > 30% gây thâm hụt nghiêm trọng.
+                Trả lời ngắn gọn, súc tích bằng tiếng Việt, tập trung vào giải pháp kinh doanh.
+                """
 
-            if "messages" not in st.session_state:
-                st.session_state.messages = [
-                    {
-                        "role": "assistant",
-                        "content": "Xin chào! Tôi là Trợ lý AI của Superstore. Bạn cần phân tích thông tin gì về báo cáo bán hàng hôm nay?",
-                    }
-                ]
+                if "messages" not in st.session_state:
+                    st.session_state.messages = [
+                        {
+                            "role": "assistant",
+                            "content": "Xin chào! Tôi là Trợ lý AI của Superstore. Bạn cần phân tích thông tin gì về báo cáo bán hàng hôm nay?",
+                        }
+                    ]
 
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.write(msg["content"])
+                for msg in st.session_state.messages:
+                    with st.chat_message(msg["role"]):
+                        st.write(msg["content"])
 
-            if prompt_input := st.chat_input("Nhập câu hỏi phân tích..."):
-                st.session_state.messages.append(
-                    {"role": "user", "content": prompt_input}
-                )
-                with st.chat_message("user"):
-                    st.write(prompt_input)
+                if prompt_input := st.chat_input("Nhập câu hỏi phân tích..."):
+                    st.session_state.messages.append(
+                        {"role": "user", "content": prompt_input}
+                    )
+                    with st.chat_message("user"):
+                        st.write(prompt_input)
 
-                with st.chat_message("assistant"):
-                    with st.spinner("AI đang truy vấn dữ liệu..."):
-                        full_prompt = f"{context_prompt}\n\nCâu hỏi: {prompt_input}"
-                        res = model.generate_content(full_prompt)
-                        st.write(res.text)
+                    with st.chat_message("assistant"):
+                        with st.spinner("AI đang truy vấn dữ liệu..."):
+                            full_prompt = f"{context_prompt}\n\nCâu hỏi: {prompt_input}"
+                            res = model.generate_content(full_prompt)
+                            st.write(res.text)
 
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": res.text}
-                )
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": res.text}
+                    )
         except Exception as err:
-            st.error(f"❌ Lỗi khởi tạo Gemini API: {err}")
+            st.error(f"❌ Lỗi kết nối Gemini API: {err}")
     else:
         st.info(
             "💡 **Hướng dẫn kích hoạt Chatbot AI:**\n"
