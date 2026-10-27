@@ -299,9 +299,7 @@ with tab2:
                 color_discrete_sequence=["#4C72B0", "#55A868"],
                 labels={"value": "Giá trị ($)", "variable": "Chỉ số"},
             )
-            fig_cat.update_layout(
-                legend_title_text="", hovermode="x unified"
-            )
+            fig_cat.update_layout(legend_title_text="", hovermode="x unified")
             st.plotly_chart(
                 fig_cat, use_container_width=True, config=CHART_CONFIG
             )
@@ -420,9 +418,7 @@ with tab4:
                     rfm_label, axis=1
                 )
 
-            search = st.text_input(
-                "Nhập Mã KH hoặc Tên (vd: CG-12520):", ""
-            )
+            search = st.text_input("Nhập Mã KH hoặc Tên (vd: CG-12520):", "")
             df_rfm_clean = df_rfm_clean.fillna("N/A")
 
             if search:
@@ -510,6 +506,46 @@ with tab6:
     )
     if not df_pairs.empty and "Product_A" in df_pairs.columns:
         # Xây dựng ma trận xuất hiện đồng thời (Heatmap)
-        all_prods = sorted(
-            list(
-                set(
+        prods_a = df_pairs["Product_A"].dropna().astype(str).unique().tolist()
+        prods_b = df_pairs["Product_B"].dropna().astype(str).unique().tolist()
+        all_prods = sorted(list(set(prods_a + prods_b)))
+
+        matrix_df = pd.DataFrame(
+            0, index=all_prods, columns=all_prods, dtype=int
+        )
+
+        for _, row in df_pairs.iterrows():
+            p1, p2, count = (
+                str(row["Product_A"]),
+                str(row["Product_B"]),
+                row["Times_Bought_Together"],
+            )
+            if p1 in matrix_df.index and p2 in matrix_df.columns:
+                matrix_df.loc[p1, p2] = count
+                matrix_df.loc[p2, p1] = count
+
+        st.markdown("#### 📊 Ma trận sản phẩm được mua cùng nhau (Heatmap)")
+        fig_heatmap = px.imshow(
+            matrix_df,
+            labels=dict(
+                x="Sản phẩm B", y="Sản phẩm A", color="Số lần mua kèm"
+            ),
+            x=all_prods,
+            y=all_prods,
+            color_continuous_scale="YlGnBu",
+            title="<b>Ma trận Sản phẩm/Danh mục phụ được mua cùng nhau</b>",
+        )
+        fig_heatmap.update_layout(height=600)
+        st.plotly_chart(
+            fig_heatmap, use_container_width=True, config=CHART_CONFIG
+        )
+
+        st.markdown("---")
+        st.markdown("#### 🛒 Tra cứu Sản phẩm Bán kèm Chi tiết")
+        prod = st.selectbox("Chọn sản phẩm / danh mục phụ:", all_prods)
+        pairs = df_pairs[
+            (df_pairs["Product_A"] == prod) | (df_pairs["Product_B"] == prod)
+        ].sort_values(by="Times_Bought_Together", ascending=False)
+
+        st.dataframe(pairs, use_container_width=True)
+
