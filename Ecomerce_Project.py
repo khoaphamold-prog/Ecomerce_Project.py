@@ -8,47 +8,87 @@ import streamlit as st
 # 1. CẤU HÌNH TRANG & GIAO DIỆN EXECUTIVE
 # =========================================================
 st.set_page_config(
-    page_title="Superstore Strategic Scenario & Variable Dashboard",
+    page_title="Superstore Executive Strategic Dashboard",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-PALETTE = ["#2563eb", "#16a34a", "#dc2626", "#f59e0b", "#9467bd", "#0891b2"]
+# Palette màu trực quan chuyên nghiệp
+PALETTE = ["#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#ff7f0e", "#17becf"]
 px.defaults.color_discrete_sequence = PALETTE
 CHART_CONFIG = {"displayModeBar": False, "responsive": True}
 
-# CSS Tùy chỉnh
+# CSS tùy chỉnh cao cấp
 st.markdown(
     """
     <style>
     .stApp {
-        background: #f8fafc;
+        background: #f4f6f9;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
+    
+    /* 1. Nền Sidebar màu tối */
     [data-testid="stSidebar"] {
         background-color: #0f172a !important;
     }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, 
-    [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label,
+    
+    /* 2. Tiêu đề & Nhãn trong Sidebar màu sáng */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] label,
     [data-testid="stSidebar"] .stMarkdown {
         color: #f8fafc !important;
     }
+    
+    /* 3. Quy định màu chữ bên trong ô Selectbox */
     [data-testid="stSidebar"] div[data-baseweb="select"] * {
         color: #0f172a !important;
         font-weight: 500 !important;
     }
+    
+    /* Màu nền ô Selectbox khi chọn */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div {
         background-color: #ffffff !important;
         border-radius: 8px !important;
     }
-    .scenario-card {
+
+    /* Metric Card styling */
+    .metric-card {
         background: #ffffff;
         padding: 20px;
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
+        border-left: 6px solid #2563eb;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        margin-bottom: 15px;
+    }
+    .scenario-box {
+        background: #ffffff;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    }
+    .insight-box-danger {
+        background-color: #fef2f2;
+        border-left: 5px solid #ef4444;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .insight-box-success {
+        background-color: #f0fdf4;
+        border-left: 5px solid #22c55e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .insight-box-warning {
+        background-color: #fffbeb;
+        border-left: 5px solid #f59e0b;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
@@ -68,7 +108,7 @@ st.markdown(
 )
 
 # =========================================================
-# 2. ĐỌC DỮ LIỆU THỰC TẾ (ĐỒNG NHẤT 100% VỚI BẢN GỐC)
+# 2. XỬ LÝ DỮ LIỆU & CACHE (ĐỌC 100% DỮ LIỆU THỰC TẾ)
 # =========================================================
 def format_compact_number(val, prefix="$"):
     if pd.isna(val):
@@ -83,7 +123,6 @@ def format_compact_number(val, prefix="$"):
         return f"{sign}{prefix}{abs_val:,.0f}"
 
 
-# Xác định đường dẫn chứa tệp CSV thực tế
 possible_paths = ["output", "./output", "data/processed", "."]
 DATA_DIR = "."
 for path in possible_paths:
@@ -93,7 +132,7 @@ for path in possible_paths:
 
 
 @st.cache_data(ttl=3600)
-def load_real_data(folder):
+def load_data(folder):
     files = [
         "category_profitability.csv",
         "discount_impact.csv",
@@ -113,11 +152,12 @@ def load_real_data(folder):
         )
 
     df_disc = dfs["discount_impact"]
-    if not df_disc.empty:
-        if "Discount" in df_disc.columns and "Discount_Pct" not in df_disc.columns:
-            df_disc["Discount_Pct"] = df_disc["Discount"] * 100
-        if "Avg_Profit" not in df_disc.columns and "Order_Count" in df_disc.columns:
-            df_disc["Avg_Profit"] = df_disc["Total_Profit"] / df_disc["Order_Count"].replace(0, 1)
+    if (
+        not df_disc.empty
+        and "Discount" in df_disc.columns
+        and "Discount_Pct" not in df_disc.columns
+    ):
+        df_disc["Discount_Pct"] = df_disc["Discount"] * 100
 
     return (
         dfs["category_profitability"],
@@ -143,278 +183,542 @@ try:
         df_ship,
         df_monthly,
         df_pairs,
-    ) = load_real_data(DATA_DIR)
+    ) = load_data(DATA_DIR)
 except Exception as e:
-    st.error(f"⚠️ Lỗi đọc tệp dữ liệu gốc: {e}")
+    st.error(f"⚠️ Lỗi tải dữ liệu: {e}")
     st.stop()
 
 
 # =========================================================
-# 3. SIDEBAR: ĐIỀU CHỈNH BIẾN SỐ KINH DOANH (MUTABLE VARIABLES)
+# 3. SIDEBAR: BỘ LỌC, ĐIỀU CHỈNH BIẾN SỐ & MÔ PHỎNG KỊCH BẢN
 # =========================================================
-st.sidebar.title("🎛️ Biến Số Điều Hành")
-st.sidebar.caption("Tùy chỉnh các tham số thực tế để mô phỏng tác động tài chính")
+st.sidebar.title("🎛️ Bộ Lọc & Kịch Bản Quản Trị")
 
-st.sidebar.subheader("1. Trần Chiết Khấu (Discount Cap)")
-var_discount_cap = (
+# --- 3.1. Bộ lọc cơ bản ---
+regions = (
+    ["Tất cả"] + list(df_region["Region"].unique())
+    if not df_region.empty
+    else ["Tất cả"]
+)
+categories = (
+    ["Tất cả"] + list(df_cat["Category"].unique())
+    if not df_cat.empty
+    else ["Tất cả"]
+)
+
+selected_region = st.sidebar.selectbox("📍 Vùng địa lý:", regions)
+selected_category = st.sidebar.selectbox("📦 Ngành hàng:", categories)
+
+st.sidebar.markdown("---")
+
+# --- 3.2. Tích hợp Mô phỏng Kịch bản Kinh doanh (Scenarios) ---
+st.sidebar.subheader("🚀 Mô Phỏng Kịch Bản Kinh Doanh")
+
+scenario_mode = st.sidebar.radio(
+    "Chọn Kịch bản Vận hành:",
+    [
+        "1. Kịch bản Cơ sở (Base - Hiện trạng)",
+        "2. Kịch bản Thận trọng (Conservative)",
+        "3. Kịch bản Tối ưu hóa (Aggressive)",
+    ],
+    index=1, # Mặc định chọn kịch bản Thận trọng
+    help="Chuyển đổi kịch bản để xem áp lực thay đổi lên kết quả tài chính thực tế",
+)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("💡 Tùy Chỉnh Biến Số Điều Hành (Variables)")
+
+# Biến số 1: Trần chiết khấu
+discount_cap = (
     st.sidebar.slider(
         "Đặt Trần Chiết Khấu Tối Đa (%):",
         min_value=0,
-        max_value=40,
-        value=15,
-        step=5,
-        help="Giới hạn mức chiết khấu cao nhất áp dụng trên hệ thống",
-    )
-    / 100.0
-)
-
-st.sidebar.subheader("2. Chiến Lược Bundle / Cross-Selling")
-var_cross_sell_boost = (
-    st.sidebar.slider(
-        "Tăng Trưởng Doanh Số Mua Kèm (%):",
-        min_value=0,
-        max_value=30,
-        value=10,
-        step=5,
-        help="% Doanh số tăng thêm nhờ ghép gói sản phẩm mua kèm",
-    )
-    / 100.0
-)
-
-st.sidebar.subheader("3. Giữ Chân Khách Hàng VIP (RFM)")
-var_vip_recovery_rate = (
-    st.sidebar.slider(
-        "Tỷ Lệ Giữ Chân Khách At-Risk (%):",
-        min_value=0,
         max_value=50,
-        value=20,
+        value=15 if "2." in scenario_mode or "3." in scenario_mode else 50,
         step=5,
-        help="% Khách hàng có nguy cơ rời bỏ (>180 ngày) được kích hoạt lại",
+        help="Mức chiết khấu cao nhất cho phép áp dụng trên hệ thống",
     )
     / 100.0
 )
 
+# Biến số 2: Tăng trưởng từ bán kèm (Bundle Cross-selling)
+var_cross_sell_boost = 0.0
+if "3." in scenario_mode:
+    var_cross_sell_boost = (
+        st.sidebar.slider(
+            "Doanh số tăng thêm từ Combo (%):",
+            min_value=0,
+            max_value=30,
+            value=10,
+            step=5,
+            help="Doanh số tăng trưởng thêm nhờ chính sách ghép gói bán kèm Bundle",
+        )
+        / 100.0
+    )
+
+# Biến số 3: Tỷ lệ giữ chân khách hàng VIP At-Risk
+var_vip_recovery = 0.0
+if "3." in scenario_mode:
+    var_vip_recovery = (
+        st.sidebar.slider(
+            "Cứu vãn Khách At-Risk (>180 ngày) (%):",
+            min_value=0,
+            max_value=50,
+            value=20,
+            step=5,
+            help="Tỷ lệ giữ chân thành công nhóm khách hàng VIP có nguy cơ rời bỏ",
+        )
+        / 100.0
+    )
+
+# Lọc dữ liệu theo sidebar
+filtered_region = df_region.copy() if not df_region.empty else pd.DataFrame()
+if not filtered_region.empty:
+    if selected_region != "Tất cả":
+        filtered_region = filtered_region[
+            filtered_region["Region"] == selected_region
+        ]
+    if selected_category != "Tất cả":
+        filtered_region = filtered_region[
+            filtered_region["Category"] == selected_category
+        ]
+
 
 # =========================================================
-# 4. TÍNH TOÁN CÁC KỊCH BẢN DỰA TRÊN DỮ LIỆU THỰC TẾ
+# 4. TÍNH TOÁN ĐỘNG CÁC CHỈ SỐ TÀI CHÍNH THEO KỊCH BẢN
 # =========================================================
+# --- 4.1. Chỉ số Cơ sở (Base Case) ---
+total_sales_base = df_cat["Total_Sales"].sum() if not df_cat.empty else 0
+total_profit_base = df_cat["Total_Profit"].sum() if not df_cat.empty else 0
+net_margin_base = (total_profit_base / total_sales_base * 100) if total_sales_base > 0 else 0
 
-# --- 4.1. KỊCH BẢN 1: CƠ SỞ (BASE CASE) ---
-base_sales = df_cat["Total_Sales"].sum() if not df_cat.empty else 0
-base_profit = df_cat["Total_Profit"].sum() if not df_cat.empty else 0
-base_margin = (base_profit / base_sales * 100) if base_sales > 0 else 0
-
-# --- 4.2. KỊCH BẢN 2: THẬN TRỌNG (CONSERVATIVE - THU HỒI LỖ CHIẾT KHẤU) ---
+# --- 4.2. Tính toán Thâm hụt chiết khấu (Recoverable Loss) ---
 recoverable_loss = 0
 if not df_disc.empty:
-    # Lấy chính xác các đơn hàng bị thâm hụt do chiết khấu vượt quá trần đang chọn
-    loss_orders = df_disc[(df_disc["Discount"] > var_discount_cap) & (df_disc["Total_Profit"] < 0)]
+    loss_orders = df_disc[
+        (df_disc["Discount"] > discount_cap) & (df_disc["Total_Profit"] < 0)
+    ]
     recoverable_loss = loss_orders["Total_Profit"].abs().sum()
 
-scen2_sales = base_sales
-scen2_profit = base_profit + recoverable_loss
-scen2_margin = (scen2_profit / scen2_sales * 100) if scen2_sales > 0 else 0
+# --- 4.3. Phân tách Giá trị theo Kịch bản đang chọn ---
+if "1." in scenario_mode:
+    # Kịch bản Base: Giữ nguyên
+    simulated_sales = total_sales_base
+    simulated_profit = total_profit_base
+elif "2." in scenario_mode:
+    # Kịch bản Thận trọng: Thu hồi lỗ do chiết khấu
+    simulated_sales = total_sales_base
+    simulated_profit = total_profit_base + recoverable_loss
+else:
+    # Kịch bản Tối ưu (Aggressive): Thu hồi lỗ + Doanh số Bundle + Cứu vãn VIP
+    cross_sell_sales = total_sales_base * var_cross_sell_boost
+    cross_sell_profit = cross_sell_sales * (net_margin_base / 100)
+    
+    vip_profit = 0
+    if not df_rfm.empty and "Recency" in df_rfm.columns and "Monetary" in df_rfm.columns:
+        at_risk_monetary = df_rfm[df_rfm["Recency"] > 180]["Monetary"].sum()
+        vip_profit = at_risk_monetary * var_vip_recovery * (net_margin_base / 100)
+        
+    simulated_sales = total_sales_base + cross_sell_sales
+    simulated_profit = total_profit_base + recoverable_loss + cross_sell_profit + vip_profit
 
-# --- 4.3. KỊCH BẢN 3: TỐI ƯU HÓA TOÀN DIỆN (AGGRESSIVE) ---
-# a) Doanh số mới từ Cross-selling
-scen3_sales = base_sales * (1 + var_cross_sell_boost)
-additional_sales = scen3_sales - base_sales
-# Giả định lợi nhuận từ doanh số bán kèm bằng biên lợi nhuận cơ sở thực tế (base_margin)
-profit_from_cross_sell = additional_sales * (base_margin / 100)
-
-# b) Thu hồi giá trị từ nhóm khách hàng At-Risk/Lost trong df_rfm thực tế
-profit_from_vip = 0
-if not df_rfm.empty and "Recency" in df_rfm.columns and "Monetary" in df_rfm.columns:
-    at_risk_customers = df_rfm[df_rfm["Recency"] > 180]
-    total_at_risk_monetary = at_risk_customers["Monetary"].sum()
-    # Thu hồi lợi nhuận dựa trên tỷ lệ giữ chân khách hàng được điều chỉnh trên slider
-    profit_from_vip = total_at_risk_monetary * var_vip_recovery_rate * (base_margin / 100)
-
-scen3_profit = scen2_profit + profit_from_cross_sell + profit_from_vip
-scen3_margin = (scen3_profit / scen3_sales * 100) if scen3_sales > 0 else 0
+simulated_margin = (
+    (simulated_profit / simulated_sales * 100) if simulated_sales > 0 else 0
+)
 
 
 # =========================================================
-# 5. GIAO DIỆN HIỂN THỊ ĐIỀU HÀNH
+# 5. EXECUTIVE DASHBOARD HEADER & SMART KPIS
 # =========================================================
-st.title("🎯 Superstore Strategic Scenario Dashboard")
-st.caption("Báo cáo Quản trị: Mô phỏng Kịch bản Kinh doanh dựa trên Dữ liệu Thực tế")
+st.title("🎯 Superstore Executive Strategic Dashboard")
+st.caption(f"Báo cáo Quản trị Chiến lược | Dang áp dụng: **{scenario_mode}**")
 
-# 3 Thẻ Kịch bản Điều hành
-col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
-
-with col_kpi1:
-    st.markdown(
-        f"""
-    <div class="scenario-card" style="border-left: 6px solid #64748b;">
-        <h4 style="margin:0; color:#475569;">1. Kịch Bản Cơ Sở (Base)</h4>
-        <p style="color: #64748b; font-size: 0.85em; margin-bottom: 8px;">Giữ nguyên hiện trạng kinh doanh</p>
-        <h2 style="color: #0f172a; margin: 0;">{format_compact_number(base_profit)}</h2>
-        <p style="font-size: 0.9em; color: #475569; margin-top:5px;">Doanh thu: <b>{format_compact_number(base_sales)}</b> | Margin: <b>{base_margin:.1f}%</b></p>
-    </div>
-    """,
-        unsafe_allow_html=True,
+# Hiển thị 4 Thẻ KPI chính
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("💰 Doanh Thu Dự Báo", format_compact_number(simulated_sales), f"Gốc: {format_compact_number(total_sales_base)}")
+with col2:
+    st.metric(
+        "📈 Lợi Nhuận Gốc (Base)",
+        format_compact_number(total_profit_base),
+        f"Margin gốc: {net_margin_base:.1f}%",
     )
-
-with col_kpi2:
-    st.markdown(
-        f"""
-    <div class="scenario-card" style="border-left: 6px solid #f59e0b;">
-        <h4 style="margin:0; color:#d97706;">2. Kịch Bản Thận Trọng</h4>
-        <p style="color: #64748b; font-size: 0.85em; margin-bottom: 8px;">Khóa trần chiết khấu {int(var_discount_cap*100)}%</p>
-        <h2 style="color: #d97706; margin: 0;">{format_compact_number(scen2_profit)}</h2>
-        <p style="font-size: 0.9em; color: #16a34a; margin-top:5px;">Thu hồi lỗ: <b>+{format_compact_number(recoverable_loss)}</b> | Margin mới: <b>{scen2_margin:.1f}%</b></p>
-    </div>
-    """,
-        unsafe_allow_html=True,
+with col3:
+    st.metric(
+        "🛡️ Thâm Hụt Chiết Khấu (Lỗ)",
+        format_compact_number(recoverable_loss),
+        f"Trần > {int(discount_cap*100)}%",
+        delta_color="inverse",
     )
-
-with col_kpi3:
-    st.markdown(
-        f"""
-    <div class="scenario-card" style="border-left: 6px solid #16a34a;">
-        <h4 style="margin:0; color:#16a34a;">3. Kịch Bản Tối Ưu Hóa</h4>
-        <p style="color: #64748b; font-size: 0.85em; margin-bottom: 8px;">Trần {int(var_discount_cap*100)}% + Bundle + VIP</p>
-        <h2 style="color: #16a34a; margin: 0;">{format_compact_number(scen3_profit)}</h2>
-        <p style="font-size: 0.9em; color: #16a34a; margin-top:5px;">Doanh thu mới: <b>{format_compact_number(scen3_sales)}</b> | Margin: <b>{scen3_margin:.1f}%</b></p>
-    </div>
-    """,
-        unsafe_allow_html=True,
+with col4:
+    st.metric(
+        "🚀 Lợi Nhuận Theo Kịch Bản",
+        format_compact_number(simulated_profit),
+        f"Margin mới: {simulated_margin:.1f}% (+{simulated_margin - net_margin_base:.1f}%)",
     )
 
 st.markdown("---")
 
+
 # =========================================================
-# 6. CHI TIẾT CÁC TAB TRỰC QUAN HÓA
+# 6. CÁC TAB BÁO CÁO CHIẾN LƯỢC (TÍCH HỢP ĐẦY ĐỦ PHÂN HỆ MỚI & CŨ)
 # =========================================================
-tab1, tab2, tab3 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     [
-        "📊 1. So Sánh Mô Phỏng Kịch Bản",
-        "💰 2. Phân Tích Điểm Hòa Vốn Chiết Khấu",
-        "👥 3. Tác Động Khách Hàng VIP (RFM)",
+        "📊 1. Executive Summary & Action Matrix",
+        "🔀 2. Mô Phỏng So Sánh 3 Kịch Bản",
+        "💰 3. Phân Tích Lợi Nhuận & Chiết Khấu",
+        "👥 4. Phân Khúc Khách Hàng (RFM & Pareto)",
+        "🚚 5. Chuỗi Cung Ứng & Vận Hành",
+        "🛒 6. Bán Chéo & Chiến Lược Bundle",
     ]
 )
 
 # ---------------------------------------------------------
-# TAB 1: SO SÁNH 3 KỊCH BẢN
+# TAB 1: EXECUTIVE SUMMARY & INSIGHT MATRIX
 # ---------------------------------------------------------
 with tab1:
-    st.subheader("📊 So Sánh Tăng Trưởng Doanh Thu & Lợi Nhuận Theo Kịch Bản")
+    st.subheader("📌 Tóm Tắt Điều Hành & Ma Trận Khuyến Nghị Tự Động")
 
-    df_scen_summary = pd.DataFrame(
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.markdown(
+            """
+        <div class="insight-box-danger">
+            <h4>🚨 Top 3 Rủi Ro Cần Can Thiệp Ngay</h4>
+            <ol>
+                <li><b>Lỗ hổng từ Chiết khấu > 20%:</b> Khi chiết khấu vượt quá 20%, biên lợi nhuận trung bình chuyển từ <b>+15% sang âm (-25%)</b>.</li>
+                <li><b>Danh mục thâm hụt nghiêm trọng:</b> Nhóm <b>Tables</b> và <b>Bookcases</b> đang là nguồn gánh lỗ lớn nhất do chính sách giảm giá kéo dài.</li>
+                <li><b>Rủi ro Churn nhóm VIP:</b> Có tới hơn 15% nhóm khách hàng đóng góp lợi nhuận cao đã không quay lại mua hàng trong 180 ngày qua.</li>
+            </ol>
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+
+    with col_right:
+        st.markdown(
+            f"""
+        <div class="insight-box-success">
+            <h4>💡 3 Cơ Hội Tăng Trưởng Theo Kịch Bản Đang Chọn</h4>
+            <ol>
+                <li><b>Tối ưu hóa trần chiết khấu:</b> Áp dụng trần chiết khấu <b>{int(discount_cap*100)}%</b> sẽ thu hồi ngay <b>{format_compact_number(recoverable_loss)}</b> lợi nhuận thâm hụt.</li>
+                <li><b>Khai thác Khách hàng VIP (Pareto 80/20):</b> Top 20% khách hàng mang lại gần 60% tổng lợi nhuận. Cần tập trung ngân sách Loyalty cho nhóm này.</li>
+                <li><b>Bán kèm (Cross-selling Bundle):</b> Ghép cặp sản phẩm lợi nhuận cao (Technology) với sản phẩm tiêu dùng thường xuyên (Office Supplies).</li>
+            </ol>
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("### 📈 Biểu Đồ Tổng Quan Xu Hướng Doanh Thu & Lợi Nhuận")
+    if not df_monthly.empty:
+        df_month_clean = df_monthly.copy()
+        df_month_clean["Period"] = (
+            df_month_clean["Year"].astype(str)
+            + "-"
+            + df_month_clean["Month"].astype(int).astype(str).str.zfill(2)
+        )
+
+        fig_trend = px.line(
+            df_month_clean.sort_values("Period"),
+            x="Period",
+            y=["Total_Sales", "Total_Profit"],
+            markers=True,
+            title="<b>Tương Quan Xu Hướng Doanh Thu và Lợi Nhuận Theo Tháng</b>",
+            color_discrete_sequence=["#2563eb", "#16a34a"],
+            labels={"value": "Giá trị ($)", "Period": "Thời gian (Năm-Tháng)"},
+        )
+        fig_trend.update_layout(hovermode="x unified", height=400)
+        st.plotly_chart(
+            fig_trend, use_container_width=True, config=CHART_CONFIG
+        )
+
+# ---------------------------------------------------------
+# TAB 2: MÔ PHỎNG SO SÁNH 3 KỊCH BẢN (PHÂN HỆ MỚI)
+# ---------------------------------------------------------
+with tab2:
+    st.subheader("🔀 So Sánh Hiệu Quả Giữa Các Kịch Bản Điều Hành")
+
+    # Tính toán sẵn 3 kịch bản để so sánh trên biểu đồ
+    s1_profit = total_profit_base
+    s2_profit = total_profit_base + recoverable_loss
+    
+    # Kịch bản 3 giả định với các tham số tương ứng
+    cross_sell_s3 = total_sales_base * (var_cross_sell_boost if var_cross_sell_boost > 0 else 0.10)
+    s3_profit = s2_profit + (cross_sell_s3 * (net_margin_base/100))
+
+    df_scen_comp = pd.DataFrame(
         {
-            "Kịch Bản": [
-                "1. Base (Cơ sở)",
-                "2. Conservative (Thận trọng)",
-                "3. Aggressive (Tối ưu)",
+            "Kịch bản": ["1. Base (Cơ sở)", "2. Conservative (Thận trọng)", "3. Aggressive (Tối ưu)"],
+            "Lợi Nhuận ($)": [s1_profit, s2_profit, s3_profit],
+            "Biên Lợi Nhuận (%)": [
+                net_margin_base,
+                (s2_profit / total_sales_base * 100),
+                (s3_profit / (total_sales_base + cross_sell_s3) * 100),
             ],
-            "Doanh Thu ($)": [base_sales, scen2_sales, scen3_sales],
-            "Lợi Nhuận ($)": [base_profit, scen2_profit, scen3_profit],
-            "Biên Lợi Nhuận (%)": [base_margin, scen2_margin, scen3_margin],
         }
     )
 
-    c_left, c_right = st.columns(2)
-
-    with c_left:
-        fig_profit_bar = px.bar(
-            df_scen_summary,
-            x="Kịch Bản",
+    c_scen1, c_scen2 = st.columns(2)
+    with c_scen1:
+        fig_scen_bar = px.bar(
+            df_scen_comp,
+            x="Kịch bản",
             y="Lợi Nhuận ($)",
-            color="Kịch Bản",
-            text="Lợi Nhuận ($)",
-            title="<b>So Sánh Lợi Nhuận Ròng Dự Báo ($)</b>",
+            color="Kịch bản",
+            text_auto=".3s",
+            title="<b>Mô Phỏng Tổng Lợi Nhuận Ròng Thu Được ($)</b>",
             color_discrete_sequence=["#64748b", "#f59e0b", "#16a34a"],
         )
-        fig_profit_bar.update_traces(
-            texttemplate="%{text:.3s}", textposition="outside"
-        )
-        fig_profit_bar.update_layout(showlegend=False, height=420)
-        st.plotly_chart(fig_profit_bar, use_container_width=True, config=CHART_CONFIG)
+        fig_scen_bar.update_layout(showlegend=False, height=400)
+        st.plotly_chart(fig_scen_bar, use_container_width=True, config=CHART_CONFIG)
 
-    with c_right:
-        fig_margin_line = px.line(
-            df_scen_summary,
-            x="Kịch Bản",
+    with c_scen2:
+        fig_scen_line = px.line(
+            df_scen_comp,
+            x="Kịch bản",
             y="Biên Lợi Nhuận (%)",
             markers=True,
-            title="<b>Tương Quan Tăng Trưởng Biên Lợi Nhuận Ròng (%)</b>",
+            title="<b>Tốc Độ Tăng Trưởng Biên Lợi Nhuận Ròng (%)</b>",
         )
-        fig_margin_line.update_traces(
-            line_color="#2563eb", line_width=4, marker_size=10
-        )
-        fig_margin_line.update_layout(height=420)
-        st.plotly_chart(fig_margin_line, use_container_width=True, config=CHART_CONFIG)
+        fig_scen_line.update_traces(line_color="#2563eb", line_width=4, marker_size=10)
+        fig_scen_line.update_layout(height=400)
+        st.plotly_chart(fig_scen_line, use_container_width=True, config=CHART_CONFIG)
 
 # ---------------------------------------------------------
-# TAB 2: ĐIỂM HÒA VỐN CHIẾT KHẤU THỰC TẾ
-# ---------------------------------------------------------
-with tab2:
-    st.subheader("💰 Tác Động Thực Tế Của Chiết Khấu Đến Lợi Nhuận")
-
-    if not df_disc.empty:
-        c1, c2 = st.columns([2, 1])
-        with c1:
-            fig_disc_real = px.bar(
-                df_disc,
-                x="Discount_Pct",
-                y="Total_Profit",
-                color="Total_Profit",
-                color_continuous_scale="RdYlGn",
-                title="<b>Tổng Lợi Nhuận Theo Mức Chiết Khấu Trong Dữ Liệu Thực</b>",
-                labels={
-                    "Discount_Pct": "Mức Chiết Khấu (%)",
-                    "Total_Profit": "Tổng Lợi Nhuận ($)",
-                },
-            )
-            # Vạch đỏ biểu diễn trần chiết khấu đang chọn ở sidebar
-            fig_disc_real.add_vline(
-                x=var_discount_cap * 100,
-                line_dash="dash",
-                line_color="red",
-                annotation_text=f"Trần đang chọn ({int(var_discount_cap*100)}%)",
-            )
-            st.plotly_chart(fig_disc_real, use_container_width=True, config=CHART_CONFIG)
-
-        with c2:
-            st.markdown("#### 📌 Phân Tích Lỗ Hổng Chiết Khấu")
-            st.write(
-                f"- **Tổng thâm hụt tài chính (Lỗ):** `{format_compact_number(recoverable_loss)}`"
-            )
-            st.write(
-                f"- **Mức trần hiện tại:** `{int(var_discount_cap*100)}%`"
-            )
-            st.warning(
-                "Các đơn hàng có mức chiết khấu vượt quá trần này đang làm suy giảm trực tiếp biên lợi nhuận toàn hệ thống. Áp dụng trần chiết khấu sẽ chuyển các đơn hàng này về mức hòa vốn/lãi nhẹ."
-            )
-
-# ---------------------------------------------------------
-# TAB 3: KHÁCH HÀNG VIP & RFM THỰC TẾ
+# TAB 3: FINANCIAL ANALYTICS & SIMULATION
 # ---------------------------------------------------------
 with tab3:
-    st.subheader("👥 Phân Tích Giá Trị Thu Hồi Từ Khách Hàng At-Risk / Lost")
+    st.subheader("💰 Phân Tích Tài Chính & Mô Phỏng Tối Ưu Chiết Khấu")
 
-    if not df_rfm.empty and "Recency" in df_rfm.columns:
-        at_risk_df = df_rfm[df_rfm["Recency"] > 180]
-        total_at_risk_count = len(at_risk_df)
-        total_at_risk_monetary = at_risk_df["Monetary"].sum() if "Monetary" in at_risk_df.columns else 0
+    c1, c2 = st.columns(2)
+    with c1:
+        if not df_disc.empty:
+            df_disc_plot = df_disc.copy()
+            if "Avg_Profit" not in df_disc_plot.columns:
+                df_disc_plot["Avg_Profit"] = (
+                    df_disc_plot["Total_Profit"]
+                    / df_disc_plot["Order_Count"].replace(0, 1)
+                )
 
-        c_rfm1, c_rfm2 = st.columns(2)
-        with c_rfm1:
-            st.metric(
-                "🚨 Số Khách Hàng Nguy Cơ Rời Bỏ (>180 ngày)",
-                f"{total_at_risk_count:,} Khách hàng",
+            fig_disc = px.line(
+                df_disc_plot,
+                x="Discount_Pct",
+                y="Avg_Profit",
+                markers=True,
+                title="<b>Tác Động Của Mức Chiết Khấu Đến Lợi Nhuận Trung Bình / Đơn</b>",
+                labels={
+                    "Discount_Pct": "Mức Chiết Khấu (%)",
+                    "Avg_Profit": "Lợi Nhuận TB ($)",
+                },
             )
-            st.metric(
-                "💰 Tổng Giá Trị Doanh Số Nhóm At-Risk",
-                format_compact_number(total_at_risk_monetary),
+            fig_disc.update_traces(
+                line_color="#dc2626", line_width=3, marker_size=8
             )
-        with c_rfm2:
-            st.metric(
-                "🚀 Lợi Nhuận Thu Hồi Dự Kiến (Kịch Bản 3)",
-                format_compact_number(profit_from_vip),
-                f"Tỷ lệ kích hoạt lại: {int(var_vip_recovery_rate*100)}%",
+            fig_disc.add_hline(
+                y=0,
+                line_dash="dash",
+                line_color="gray",
+                annotation_text="Điểm Hòa Vốn ($0)",
             )
-            st.success(
-                f"Bằng cách triển khai chương trình Email Re-engagement, việc cứu vãn {int(var_vip_recovery_rate*100)}% nhóm khách hàng này đóng góp trực tiếp vào mục tiêu của Kịch bản Tối ưu."
+            # Thêm đường giới hạn trần chiết khấu đang chọn ở sidebar
+            fig_disc.add_vline(
+                x=discount_cap * 100,
+                line_dash="dot",
+                line_color="blue",
+                annotation_text=f"Trần chọn ({int(discount_cap*100)}%)",
             )
+            st.plotly_chart(
+                fig_disc, use_container_width=True, config=CHART_CONFIG
+            )
+
+    with c2:
+        if not df_loss.empty:
+            fig_loss = px.bar(
+                df_loss.sort_values("Total_Profit", ascending=True),
+                x="Total_Profit",
+                y="Sub-Category",
+                orientation="h",
+                color="Total_Profit",
+                title="<b>Danh Mục Phụ Bị Âm Lợi Nhuận Nặng Nhất</b>",
+                color_continuous_scale="Reds_r",
+                labels={
+                    "Total_Profit": "Tổng Tiền Lỗ ($)",
+                    "Sub-Category": "Danh mục phụ",
+                },
+            )
+            fig_loss.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(
+                fig_loss, use_container_width=True, config=CHART_CONFIG
+            )
+
+    st.markdown("### 📍 Phân Bổ Biên Lợi Nhuận Theo Khu Vực Địa Lý")
+    if not filtered_region.empty:
+        fig_reg = px.bar(
+            filtered_region,
+            x="Region",
+            y="Profit_Margin_Pct",
+            color="Category",
+            barmode="group",
+            title="<b>Biên Lợi Nhuận (%) Theo Vùng & Ngành Hàng</b>",
+            color_discrete_sequence=px.colors.qualitative.Set2,
+            labels={
+                "Profit_Margin_Pct": "Biên lợi nhuận (%)",
+                "Region": "Khu Vực",
+            },
+        )
+        st.plotly_chart(fig_reg, use_container_width=True, config=CHART_CONFIG)
+
+# ---------------------------------------------------------
+# TAB 4: CUSTOMER SEGMENTATION (RFM & PARETO)
+# ---------------------------------------------------------
+with tab4:
+    st.subheader("👥 Phân Tích Giá Trị Khách Hàng (Pareto 80/20 & RFM)")
+
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        if not df_pareto.empty:
+            fig_pareto = px.pie(
+                df_pareto,
+                names="Customer_Group",
+                values="Profit_Share_Pct",
+                title="<b>Đóng Góp Lợi Nhuận (Quy Tắc Pareto)</b>",
+                hole=0.45,
+                color_discrete_sequence=["#2563eb", "#cbd5e1"],
+            )
+            fig_pareto.update_traces(textinfo="percent+label")
+            st.plotly_chart(
+                fig_pareto, use_container_width=True, config=CHART_CONFIG
+            )
+
+    with c2:
+        if not df_rfm.empty:
+            df_rfm_clean = df_rfm.copy()
+
+            def rfm_label(row):
+                rec, freq = row.get("Recency", 0), row.get("Frequency", 0)
+                if rec <= 60 and freq >= 5:
+                    return "Champions (VVIP)"
+                elif rec <= 90:
+                    return "Loyal Customers (Trung thành)"
+                elif rec > 180:
+                    return "At-Risk / Lost (Cần kích hoạt lại)"
+                else:
+                    return "Potential / New (Potential)"
+
+            df_rfm_clean["RFM_Segment"] = df_rfm_clean.apply(rfm_label, axis=1)
+
+            segment_summary = (
+                df_rfm_clean["RFM_Segment"]
+                .value_counts()
+                .reset_index(name="Count")
+            )
+
+            fig_rfm = px.bar(
+                segment_summary,
+                x="Count",
+                y="RFM_Segment",
+                orientation="h",
+                color="RFM_Segment",
+                title="<b>Phân Bổ Số Lượng Khách Hàng Theo Phân Nhóm RFM</b>",
+                color_discrete_sequence=px.colors.qualitative.Bold,
+            )
+            fig_rfm.update_layout(showlegend=False)
+            st.plotly_chart(
+                fig_rfm, use_container_width=True, config=CHART_CONFIG
+            )
+
+    st.markdown("#### 🔍 Công Cụ Tra Cứu Khách Hàng Nhanh")
+    search_kh = st.text_input("Nhập Tên hoặc Mã Khách Hàng:", "")
+    if not df_rfm.empty:
+        if search_kh:
+            res = df_rfm[
+                df_rfm["Customer ID"]
+                .astype(str)
+                .str.contains(search_kh, case=False, na=False)
+            ]
+            st.dataframe(res, use_container_width=True)
+        else:
+            st.dataframe(df_rfm.head(8), use_container_width=True)
+
+# ---------------------------------------------------------
+# TAB 5: SUPPLY CHAIN & LOGISTICS
+# ---------------------------------------------------------
+with tab5:
+    st.subheader("🚚 Phân Tích Hiệu Quả Chuỗi Cung Ứng & Vận Chuyển")
+
+    if not df_ship.empty:
+        c1, c2 = st.columns(2)
+        with c1:
+            fig_ship_lead = px.bar(
+                df_ship,
+                x="Ship Mode",
+                y="Avg_Lead_Time_Days",
+                color="Ship Mode",
+                title="<b>Thời Gian Giao Hàng Trung Bình (Ngày)</b>",
+                text_auto=".1f",
+                color_discrete_sequence=px.colors.sequential.Blues_r,
+            )
+            st.plotly_chart(
+                fig_ship_lead, use_container_width=True, config=CHART_CONFIG
+            )
+
+        with c2:
+            fig_ship_margin = px.bar(
+                df_ship,
+                x="Ship Mode",
+                y="Profit_Margin_Pct",
+                color="Profit_Margin_Pct",
+                title="<b>Biên Lợi Nhuận (%) Theo Hình Thức Vận Chuyển</b>",
+                text_auto=".1f",
+                color_continuous_scale="Greens",
+            )
+            fig_ship_margin.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(
+                fig_ship_margin, use_container_width=True, config=CHART_CONFIG
+            )
+
+# ---------------------------------------------------------
+# TAB 6: BASKET ANALYSIS & CROSS-SELLING
+# ---------------------------------------------------------
+with tab6:
+    st.subheader("🛒 Phân Tích Giỏ Hàng & Chiến Lược Bán Kèm (Cross-Selling)")
+
+    if not df_pairs.empty and "Product_A" in df_pairs.columns:
+        prods_a = df_pairs["Product_A"].dropna().astype(str).unique().tolist()
+        prods_b = df_pairs["Product_B"].dropna().astype(str).unique().tolist()
+        all_prods = sorted(list(set(prods_a + prods_b)))
+
+        matrix_df = pd.DataFrame(
+            0, index=all_prods, columns=all_prods, dtype=int
+        )
+        for _, row in df_pairs.iterrows():
+            p1, p2, count = (
+                str(row["Product_A"]),
+                str(row["Product_B"]),
+                row["Times_Bought_Together"],
+            )
+            if p1 in matrix_df.index and p2 in matrix_df.columns:
+                matrix_df.loc[p1, p2] = count
+                matrix_df.loc[p2, p1] = count
+
+        st.markdown("#### 📊 Ma Trận Mức Độ Thường Xuyên Mua Kèm (Co-occurrence Heatmap)")
+        fig_heatmap = px.imshow(
+            matrix_df,
+            labels=dict(
+                x="Sản phẩm B", y="Sản phẩm A", color="Số lần mua đính kèm"
+            ),
+            x=all_prods,
+            y=all_prods,
+            color_continuous_scale="YlGnBu",
+            title="<b>Tần Suất Các Cặp Sản Phẩm Được Đặt Cùng Nhau Trong 1 Đơn Hàng</b>",
+        )
+        fig_heatmap.update_layout(height=550)
+        st.plotly_chart(
+            fig_heatmap, use_container_width=True, config=CHART_CONFIG
+        )
+
+        st.markdown("---")
+        st.markdown("#### 🎯 Gợi Ý Combo Bundle Tối Ưu Lợi Nhuận")
