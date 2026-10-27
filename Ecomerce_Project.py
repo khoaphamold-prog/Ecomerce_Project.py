@@ -661,3 +661,77 @@ with tab6:
             columns={col_count: "Số Lần Đã Mua Cùng Nhau"}
         )
         st.dataframe(display_df, use_container_width=True, hide_index=True)
+        ====
+        # add chatbot 
+import google.generativeai as genai
+import streamlit as st
+
+# Khai báo Tab 7 trong danh sách Tabs
+# tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([...])
+
+with tab7:
+    st.subheader("💬 Trợ Lý AI Phân Tích Bán Hàng")
+    st.caption(
+        "Đặt câu hỏi trực tiếp cho AI về dữ liệu doanh thu, lợi nhuận và khách hàng."
+    )
+
+    # 1. Cấu hình API Key (Lấy từ Secrets của Streamlit Cloud hoặc ô Nhập)
+    api_key = st.sidebar.text_input(
+        "🔑 Nhập Gemini API Key:", type="password"
+    )
+
+    if api_key:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        # 2. Tạo ngữ cảnh dữ liệu (System Context) từ các file CSV để AI đọc hiểu
+        context_data = f"""
+        Bạn là Trợ lý AI Phân tích Dữ liệu Bán hàng cho dự án Superstore E-Commerce.
+        Dưới đây là tóm tắt dữ liệu hiện tại của hệ thống:
+        - Tổng Doanh Thu: ${total_sales:,.0f}
+        - Tổng Lợi Nhuận: ${total_profit:,.0f}
+        - Biên Lợi Nhuận TB: {avg_margin:.1f}%
+        - Top 20% Khách hàng VIP đóng góp gần 60% tổng lợi nhuận.
+        - Nhóm sản phẩm gây lỗ lớn nhất: {worst_sub_name} (Thâm hụt {worst_sub_loss:,.0f}$).
+        - Mức chiết khấu an toàn tối đa: <= 20%. Chiết khấu > 30% gây âm lợi nhuận sâu.
+        Hãy trả lời ngắn gọn, chuyên nghiệp, hỗ trợ ra quyết định kinh doanh cho Ban Giám đốc.
+        """
+
+        # 3. Quản lý lịch sử trò chuyện
+        if "messages" not in st.session_state:
+            st.session_state.messages = [
+                {
+                    "role": "assistant",
+                    "content": "Xin chào! Tôi là Trợ lý AI của Superstore. Bạn cần hỗ trợ phân tích dữ liệu gì hôm nay?",
+                }
+            ]
+
+        # Hiển thị lịch sử chat
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.write(msg["content"])
+
+        # 4. Xử lý khi người dùng gửi câu hỏi
+        if user_query := st.chat_input("Hỏi AI về báo cáo bán hàng..."):
+            st.session_state.messages.append(
+                {"role": "user", "content": user_query}
+            )
+            with st.chat_message("user"):
+                st.write(user_query)
+
+            # Gọi Gemini API
+            with st.chat_message("assistant"):
+                with st.spinner("AI đang suy nghĩ và phân tích dữ liệu..."):
+                    prompt = f"{context_data}\n\nCâu hỏi của người dùng: {user_query}"
+                    response = model.generate_content(prompt)
+                    bot_reply = response.text
+                    st.write(bot_reply)
+
+            st.session_state.messages.append(
+                {"role": "assistant", "content": bot_reply}
+            )
+    else:
+        st.warning(
+            "⚠️ Vui lòng nhập Gemini API Key ở thanh Sidebar bên trái để bật tính năng Chatbot AI."
+        )
+
