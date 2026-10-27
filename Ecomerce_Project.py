@@ -681,30 +681,48 @@ with tab5:
             )
 
 # ---------------------------------------------------------
-# TAB 6: BASKET ANALYSIS & CROSS-SELLING
+# ---------------------------------------------------------
+# TAB 6: BASKET ANALYSIS & CROSS-SELLING (CẬP NHẬT HOÀN CHỈNH)
 # ---------------------------------------------------------
 with tab6:
     st.subheader("🛒 Phân Tích Giỏ Hàng & Chiến Lược Bán Kèm (Cross-Selling)")
 
-    if not df_pairs.empty and "Product_A" in df_pairs.columns:
-        prods_a = df_pairs["Product_A"].dropna().astype(str).unique().tolist()
-        prods_b = df_pairs["Product_B"].dropna().astype(str).unique().tolist()
+    if df_pairs.empty:
+        st.warning("⚠️ Không tìm thấy dữ liệu mua kèm (`product_pairs.csv`). Vui lòng kiểm tra lại đường dẫn dữ liệu.")
+    else:
+        # Chuẩn hóa tên cột nếu có sự chênh lệch chữ hoa/thường
+        col_p1 = "Product_A" if "Product_A" in df_pairs.columns else df_pairs.columns[0]
+        col_p2 = "Product_B" if "Product_B" in df_pairs.columns else df_pairs.columns[1]
+        col_count = "Times_Bought_Together" if "Times_Bought_Together" in df_pairs.columns else df_pairs.columns[2]
+
+        prods_a = df_pairs[col_p1].dropna().astype(str).unique().tolist()
+        prods_b = df_pairs[col_p2].dropna().astype(str).unique().tolist()
         all_prods = sorted(list(set(prods_a + prods_b)))
 
-        matrix_df = pd.DataFrame(
-            0, index=all_prods, columns=all_prods, dtype=int
-        )
+        # 1. Ma trận Heatmap
+        st.markdown("#### 📊 Ma Trận Mức Độ Thường Xuyên Mua Kèm (Co-occurrence Heatmap)")
+        
+        matrix_df = pd.DataFrame(0, index=all_prods, columns=all_prods, dtype=int)
         for _, row in df_pairs.iterrows():
-            p1, p2, count = (
-                str(row["Product_A"]),
-                str(row["Product_B"]),
-                row["Times_Bought_Together"],
-            )
+            p1, p2, count = str(row[col_p1]), str(row[col_p2]), row[col_count]
             if p1 in matrix_df.index and p2 in matrix_df.columns:
                 matrix_df.loc[p1, p2] = count
                 matrix_df.loc[p2, p1] = count
 
-    # 2. KHU VỰC GỢI Ý COMBO BUNDLE (HIỂN THỊ RÕ RÀNG)
+        fig_heatmap = px.imshow(
+            matrix_df,
+            labels=dict(x="Sản phẩm B", y="Sản phẩm A", color="Số lần mua đính kèm"),
+            x=all_prods,
+            y=all_prods,
+            color_continuous_scale="YlGnBu",
+            title="<b>Tần Suất Các Cặp Sản Phẩm Được Đặt Cùng Nhau Trong 1 Đơn Hàng</b>",
+        )
+        fig_heatmap.update_layout(height=450)
+        st.plotly_chart(fig_heatmap, use_container_width=True, config=CHART_CONFIG)
+
+        st.markdown("---")
+
+        # 2. KHU VỰC GỢI Ý COMBO BUNDLE (HIỂN THỊ RÕ RÀNG)
         st.markdown("### 🎯 Gợi Ý Combo Bundle Tối Ưu Lợi Nhuận")
         st.caption("Chọn một danh mục/sản phẩm gốc để hệ thống tự động trích xuất các sản phẩm nên đóng gói mua kèm (Bundle).")
 
@@ -747,3 +765,4 @@ with tab6:
             columns={col_count: "Tần Suất Mua Cùng Nhau (Lần)"}
         )
         st.dataframe(display_df, use_container_width=True, hide_index=True)
+
