@@ -119,7 +119,7 @@ with tab1:
         ax.legend()
         st.pyplot(fig)
 
-      with col_b:
+    with col_b:
         st.subheader("Tác động của Mức Chiết khấu (Discount)")
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(
@@ -131,12 +131,12 @@ with tab1:
         )
         ax.axhline(0, color="gray", linestyle="--")
         ax.set_xlabel("Mức Chiết khấu")
-        ax.set_ylabel("Lợi nhuận Trung bình ($)")  # Lệnh chuẩn xác ở đây
+        ax.set_ylabel("Lợi nhuận Trung bình ($)")
         st.pyplot(fig)
+
 # --- TAB 2: KHÁCH HÀNG ---
 with tab2:
     st.subheader("Phân tích Phân khúc Khách hàng (RFM)")
-
 
     def classify_rfm(row):
         if row["Recency"] <= 90 and row["Frequency"] >= 5:
@@ -145,7 +145,6 @@ with tab2:
             return "At-risk (Nguy cơ rời bỏ)"
         else:
             return "Regular/New (Thường/Mới)"
-
 
     df_rfm["RFM_Segment"] = df_rfm.apply(classify_rfm, axis=1)
     rfm_counts = df_rfm["RFM_Segment"].value_counts()
@@ -173,7 +172,8 @@ with tab2:
             "${:,.2f}".format
         )
         st.dataframe(df_top_cust)
-    # --- TAB 3: VẬN CHUYỂN & ĐỊA LÝ ---
+
+# --- TAB 3: VẬN CHUYỂN & ĐỊA LÝ ---
 with tab3:
     if not df_ship.empty:
         col_s1, col_s2 = st.columns(2)
@@ -220,10 +220,12 @@ with tab3:
         st.warning(
             "⚠️ Chưa tìm thấy file `shipping_geo_summary.csv` trên GitHub. Vui lòng upload thêm file này."
         )
-    # --- TAB 4: MUA CÙNG NHAU ---
+
+# --- TAB 4: MUA CÙNG NHAU ---
 with tab4:
     st.subheader("Ma Trận Mua Cùng Nhau (Co-occurrence)")
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.heatmap(df_co, cmap="YlGnBu", linewidths=0.3, ax=ax)
     st.pyplot(fig)
+
 
