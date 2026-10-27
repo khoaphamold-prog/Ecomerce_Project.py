@@ -27,12 +27,34 @@ st.markdown(
         background: #f4f6f9;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
+    
+    /* 1. Nền Sidebar màu tối */
     [data-testid="stSidebar"] {
-        background-color: #0f172a;
+        background-color: #0f172a !important;
     }
-    [data-testid="stSidebar"] * {
-        color: #f1f5f9 !important;
+    
+    /* 2. Tiêu đề & Nhãn (Labels) trong Sidebar màu sáng */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #f8fafc !important;
     }
+    
+    /* 3. SỬA LỖI MỜ CHỮ: Quy định rõ màu chữ đen/tối bên trong ô Selectbox */
+    [data-testid="stSidebar"] div[data-baseweb="select"] * {
+        color: #0f172a !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Màu nền ô Selectbox khi chọn */
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        border-radius: 8px !important;
+    }
+
+    /* Metric Card styling */
     .metric-card {
         background: #ffffff;
         padding: 20px;
@@ -77,8 +99,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-
 # =========================================================
 # 2. XỬ LÝ DỮ LIỆU & CACHE
 # =========================================================
