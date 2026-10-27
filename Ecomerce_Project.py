@@ -3,10 +3,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# Kiểm tra thư viện Gemini API (nếu cài đặt)
+# Kiểm tra thư viện Gemini API
 try:
     import google.generativeai as genai
-
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
@@ -26,7 +25,7 @@ PALETTE = ["#FF6B6B", "#6C5CE7", "#00CEC9", "#FFA502", "#00B894", "#E84393"]
 px.defaults.color_discrete_sequence = PALETTE
 CHART_CONFIG = {"displayModeBar": False}
 
-# CSS Tùy chỉnh
+# CSS Tùy chỉnh giao diện
 st.markdown(
     """
     <style>
@@ -77,7 +76,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
 # =========================================================
 # 2. HÀM ĐỌC & XỬ LÝ DỮ LIỆU
 # =========================================================
@@ -93,14 +91,12 @@ def format_compact_number(val, prefix="$"):
     else:
         return f"{sign}{prefix}{abs_val:,.0f}"
 
-
 possible_paths = ["output", "./output", "data/processed", "."]
 DATA_DIR = "."
 for path in possible_paths:
     if os.path.exists(os.path.join(path, "category_profitability.csv")):
         DATA_DIR = path
         break
-
 
 @st.cache_data
 def load_data(folder):
@@ -129,7 +125,6 @@ def load_data(folder):
         df_pairs,
     )
 
-
 try:
     (
         df_cat,
@@ -145,7 +140,6 @@ try:
 except Exception as e:
     st.error(f"⚠️ Không thể tải tập dữ liệu CSV từ thư mục '{DATA_DIR}': {e}")
     st.stop()
-
 
 # =========================================================
 # 3. SIDEBAR BỘ LỌC & ĐIỀU KHIỂN
@@ -181,7 +175,6 @@ if selected_category != "Tất cả":
         filtered_region["Category"] == selected_category
     ]
 
-
 # =========================================================
 # 4. KPI TỔNG QUAN
 # =========================================================
@@ -202,7 +195,6 @@ col3.metric(
 col4.metric("👥 Khách Hàng VIP", f"{vip_count:,} KH", "+12 KH mới")
 
 st.markdown("---")
-
 
 # =========================================================
 # 5. CÁC TAB PHÂN TÍCH CHUYÊN SÂU (7 TABS)
@@ -405,24 +397,19 @@ with tab6:
         ].sort_values(by="Times_Bought_Together", ascending=False)
         st.dataframe(pairs, use_container_width=True)
 
-# --- TAB 7: TRỢ LÝ AI CHATBOT (TỐI ƯU HÓA) ---
+# --- TAB 7: TRỢ LÝ AI CHATBOT (ĐÃ TỐI ƯU HÓA BỘ NHỚ HỘI THOẠI) ---
 with tab7:
-  st.subheader("💬 Trợ Lý AI Phân Tích Bán Hàng (Interactive Chat)")
-  st.caption(
-      "Trợ lý thông minh có duy trì ngữ cảnh hội thoại (Multi-turn Chat) với dữ"
-      " liệu Superstore."
-  )
+    st.subheader("💬 Trợ Lý AI Phân Tích Bán Hàng (Interactive Chat)")
+    st.caption("Trò chuyện cùng AI có duy trì ngữ cảnh hội thoại (Multi-turn Chat) real-time.")
 
-  # Ưu tiên lấy API key từ Streamlit Secrets hoặc từ ô nhập ở Sidebar
-  api_key = st.secrets.get("GEMINI_API_KEY", api_key_input)
+    api_key = st.secrets.get("GEMINI_API_KEY", api_key_input)
 
-  if GEMINI_AVAILABLE and api_key:
-    try:
-      genai.configure(api_key=api_key)
-
-      # 1. Khởi tạo Model với System Instruction chứa ngữ cảnh dữ liệu kinh doanh
-      model_name = "gemini-1.5-flash"
-      system_instruction = f"""
+    if GEMINI_AVAILABLE and api_key:
+        try:
+            genai.configure(api_key=api_key)
+            model_name = "gemini-1.5-flash"
+            
+            system_instruction = f"""
             Bạn là Trợ lý AI Phân tích Kinh doanh chuyên nghiệp cho hệ thống Superstore E-Commerce.
             Dữ liệu tổng quan hiện tại của hệ thống:
             - Tổng Doanh Thu: ${total_sales:,.0f}
@@ -431,64 +418,49 @@ with tab7:
             - Sản phẩm gây âm lợi nhuận lớn nhất: {worst_sub_name} (Âm {worst_sub_loss:,.0f}$)
             - Mức chiết khấu an toàn: <= 20%. Chiết khấu > 30% gây thâm hụt nghiêm trọng.
             
-            Nhiệm vụ của bạn: Trả lời ngắn gọn, súc tích bằng tiếng Việt, phân tích sâu và tập trung đề xuất giải pháp kinh doanh dựa trên các con số trên khi được hỏi.
+            Nhiệm vụ: Trả lời ngắn gọn, súc tích bằng tiếng Việt, tập trung đề xuất giải pháp kinh doanh.
             """
 
-      model = genai.GenerativeModel(
-          model_name=model_name,
-          system_instruction=system_instruction,
-      )
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=system_instruction
+            )
 
-      # 2. Khởi tạo phiên Chat Session trong st.session_state để lưu lịch sử thông minh
-      if "chat_session" not in st.session_state:
-        st.session_state.chat_session = model.start_chat(history=[])
+            # Khởi tạo phiên Chat Session duy trì bộ nhớ trong session_state
+            if "chat_session" not in st.session_state:
+                st.session_state.chat_session = model.start_chat(history=[])
 
-      # 3. Hiển thị lại toàn bộ lịch sử trò chuyện từ phiên chat của Gemini
-      for message in st.session_state.chat_session.history:
-        # Chuyển đổi role của Gemini ('user' / 'model') sang Streamlit chat role ('user' / 'assistant')
-        role = "user" if message.role == "user" else "assistant"
-        # Trích xuất text từ message parts
-        message_text = "".join(
-            [part.text for part in message.parts if hasattr(part, "text")]
+            # Hiển thị lại lịch sử trò chuyện từ phiên chat của Gemini
+            for message in st.session_state.chat_session.history:
+                role = "user" if message.role == "user" else "assistant"
+                message_text = "".join([part.text for part in message.parts if hasattr(part, "text")])
+                with st.chat_message(role):
+                    st.write(message_text)
+
+            # Lời chào mặc định nếu lịch sử trống
+            if not st.session_state.chat_session.history:
+                with st.chat_message("assistant"):
+                    initial_greeting = "Xin chào! Tôi là Trợ lý AI của Superstore. Bạn muốn phân tích thông tin gì về báo cáo bán hàng, lợi nhuận hay chiến lược chiết khấu hôm nay?"
+                    st.write(initial_greeting)
+
+            # Ô nhập liệu chat
+            if prompt_input := st.chat_input("Nhập câu hỏi phân tích...", key="superstore_chat_input"):
+                with st.chat_message("user"):
+                    st.write(prompt_input)
+
+                with st.chat_message("assistant"):
+                    with st.spinner("AI đang phân tích dữ liệu..."):
+                        try:
+                            response = st.session_state.chat_session.send_message(prompt_input)
+                            st.write(response.text)
+                        except Exception as chat_err:
+                            st.error(f"⚠️ Không thể nhận phản hồi từ AI: {chat_err}")
+
+        except Exception as err:
+            st.error(f"❌ Lỗi khởi tạo Gemini API: {err}")
+    else:
+        st.info(
+            "💡 **Hướng dẫn kích hoạt Chatbot AI:**\n"
+            "1. Thêm gói `google-generativeai` vào tệp `requirements.txt`.\n"
+            "2. Nhập Gemini API Key tại ô cấu hình thanh Sidebar bên trái (hoặc thêm vào Secrets)."
         )
-        with st.chat_message(role):
-          st.write(message_text)
-
-      # Nếu chưa có lời chào mở đầu nào trong lịch sử, có thể hiển thị lời chào mặc định
-      if not st.session_state.chat_session.history:
-        with st.chat_message("assistant"):
-          initial_greeting = (
-              "Xin chào! Tôi là Trợ lý AI của Superstore. Bạn muốn phân tích"
-              " thông tin gì về báo cáo bán hàng, lợi nhuận hay chiến lược chiết"
-              " khấu hôm nay?"
-          )
-          st.write(initial_greeting)
-
-      # 4. Ô nhập liệu chat
-      if prompt_input := st.chat_input(
-          "Nhập câu hỏi phân tích...", key="superstore_chat_input"
-      ):
-        # Hiển thị tin nhắn người dùng ngay lập tức
-        with st.chat_message("user"):
-          st.write(prompt_input)
-
-        # Gửi tin nhắn tới Gemini thông qua chat_session (tự động giữ ngữ cảnh)
-        with st.chat_message("assistant"):
-          with st.spinner("AI đang phân tích dữ liệu..."):
-            try:
-              response = st.session_state.chat_session.send_message(
-                  prompt_input
-              )
-              st.write(response.text)
-            except Exception as chat_err:
-              st.error(f"⚠️ Không thể nhận phản hồi từ AI: {chat_err}")
-
-    except Exception as err:
-      st.error(f"❌ Lỗi khởi tạo Gemini API: {err}")
-  else:
-    st.info(
-        "💡 **Hướng dẫn kích hoạt Chatbot AI:**\n"
-        "1. Thêm gói `google-generativeai` vào tệp `requirements.txt`.\n"
-        "2. Nhập Gemini API Key tại ô cấu hình thanh Sidebar bên trái (hoặc"
-        " thêm vào Secrets)."
-    )
