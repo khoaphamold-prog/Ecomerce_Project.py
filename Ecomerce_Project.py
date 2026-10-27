@@ -119,7 +119,7 @@ with tab1:
         ax.legend()
         st.pyplot(fig)
 
-    with col_b:
+      with col_b:
         st.subheader("Tác động của Mức Chiết khấu (Discount)")
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(
@@ -131,6 +131,99 @@ with tab1:
         )
         ax.axhline(0, color="gray", linestyle="--")
         ax.set_xlabel("Mức Chiết khấu")
-        ax.set_ylabel
+        ax.set_ylabel("Lợi nhuận Trung bình ($)")  # Lệnh chuẩn xác ở đây
+        st.pyplot(fig)
+# --- TAB 2: KHÁCH HÀNG ---
+with tab2:
+    st.subheader("Phân tích Phân khúc Khách hàng (RFM)")
 
+
+    def classify_rfm(row):
+        if row["Recency"] <= 90 and row["Frequency"] >= 5:
+            return "Loyal (Trung thành)"
+        elif row["Recency"] > 180:
+            return "At-risk (Nguy cơ rời bỏ)"
+        else:
+            return "Regular/New (Thường/Mới)"
+
+
+    df_rfm["RFM_Segment"] = df_rfm.apply(classify_rfm, axis=1)
+    rfm_counts = df_rfm["RFM_Segment"].value_counts()
+
+    col_rfm1, col_rfm2 = st.columns(2)
+    with col_rfm1:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.pie(
+            rfm_counts,
+            labels=rfm_counts.index,
+            autopct="%1.1f%%",
+            colors=["#66b3ff", "#ff9999", "#99ff99"],
+        )
+        st.pyplot(fig)
+
+    with col_rfm2:
+        st.write("**Top 10 Khách hàng có Doanh thu lớn nhất:**")
+        df_top_cust = (
+            df_rfm.sort_values(by="Monetary", ascending=False)
+            .head(10)[["Customer ID", "Segment", "Monetary", "Total_Profit"]]
+            .copy()
+        )
+        df_top_cust["Monetary"] = df_top_cust["Monetary"].map("${:,.2f}".format)
+        df_top_cust["Total_Profit"] = df_top_cust["Total_Profit"].map(
+            "${:,.2f}".format
+        )
+        st.dataframe(df_top_cust)
+    # --- TAB 3: VẬN CHUYỂN & ĐỊA LÝ ---
+with tab3:
+    if not df_ship.empty:
+        col_s1, col_s2 = st.columns(2)
+
+        with col_s1:
+            st.subheader("Thời gian giao hàng trung bình (Ngày)")
+            ship_summary = (
+                df_ship.groupby("Ship Mode")["Avg_Lead_Time"]
+                .mean()
+                .reset_index()
+            )
+            fig, ax = plt.subplots(figsize=(7, 4))
+            sns.barplot(
+                data=ship_summary,
+                x="Ship Mode",
+                y="Avg_Lead_Time",
+                hue="Ship Mode",
+                palette="Blues_d",
+                legend=False,
+                ax=ax,
+            )
+            st.pyplot(fig)
+
+        with col_s2:
+            st.subheader("Top 10 Bang có Doanh thu cao nhất")
+            top_states = (
+                df_ship.groupby("State")["Total_Sales"]
+                .sum()
+                .nlargest(10)
+                .reset_index()
+            )
+            fig, ax = plt.subplots(figsize=(7, 4))
+            sns.barplot(
+                data=top_states,
+                x="Total_Sales",
+                y="State",
+                hue="State",
+                palette="Viridis",
+                legend=False,
+                ax=ax,
+            )
+            st.pyplot(fig)
+    else:
+        st.warning(
+            "⚠️ Chưa tìm thấy file `shipping_geo_summary.csv` trên GitHub. Vui lòng upload thêm file này."
+        )
+    # --- TAB 4: MUA CÙNG NHAU ---
+with tab4:
+    st.subheader("Ma Trận Mua Cùng Nhau (Co-occurrence)")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.heatmap(df_co, cmap="YlGnBu", linewidths=0.3, ax=ax)
+    st.pyplot(fig)
 
