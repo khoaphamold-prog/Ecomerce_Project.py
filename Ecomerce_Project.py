@@ -704,21 +704,46 @@ with tab6:
                 matrix_df.loc[p1, p2] = count
                 matrix_df.loc[p2, p1] = count
 
-        st.markdown("#### 📊 Ma Trận Mức Độ Thường Xuyên Mua Kèm (Co-occurrence Heatmap)")
-        fig_heatmap = px.imshow(
-            matrix_df,
-            labels=dict(
-                x="Sản phẩm B", y="Sản phẩm A", color="Số lần mua đính kèm"
-            ),
-            x=all_prods,
-            y=all_prods,
-            color_continuous_scale="YlGnBu",
-            title="<b>Tần Suất Các Cặp Sản Phẩm Được Đặt Cùng Nhau Trong 1 Đơn Hàng</b>",
-        )
-        fig_heatmap.update_layout(height=550)
-        st.plotly_chart(
-            fig_heatmap, use_container_width=True, config=CHART_CONFIG
-        )
+    # 2. KHU VỰC GỢI Ý COMBO BUNDLE (HIỂN THỊ RÕ RÀNG)
+        st.markdown("### 🎯 Gợi Ý Combo Bundle Tối Ưu Lợi Nhuận")
+        st.caption("Chọn một danh mục/sản phẩm gốc để hệ thống tự động trích xuất các sản phẩm nên đóng gói mua kèm (Bundle).")
 
-        st.markdown("---")
-        st.markdown("#### 🎯 Gợi Ý Combo Bundle Tối Ưu Lợi Nhuận")
+        c_select, c_info = st.columns([1, 2])
+        
+        with c_select:
+            selected_prod = st.selectbox(
+                "📌 Chọn sản phẩm / ngành hàng chính:",
+                options=all_prods,
+                index=0,
+                key="combo_select_box"
+            )
+
+        # Lọc danh sách mua kèm liên quan đến sản phẩm được chọn
+        recommendations = df_pairs[
+            (df_pairs[col_p1].astype(str) == selected_prod) | 
+            (df_pairs[col_p2].astype(str) == selected_prod)
+        ].copy()
+
+        # Tạo cột hiển thị sản phẩm đi kèm đối ứng
+        recommendations["Sản phẩm gợi ý bán kèm"] = recommendations.apply(
+            lambda r: str(r[col_p2]) if str(r[col_p1]) == selected_prod else str(r[col_p1]), 
+            axis=1
+        )
+        recommendations = recommendations.sort_values(by=col_count, ascending=False)
+
+        with c_info:
+            top_bundle = recommendations.iloc[0] if not recommendations.empty else None
+            if top_bundle is not None:
+                st.success(
+                    f"💡 **Khuyến nghị Bundle hàng đầu:** Đóng gói **[{selected_prod}]** kết hợp với **[{top_bundle['Sản phẩm gợi ý bán kèm']}]** "
+                    f"(Đã có **{top_bundle[col_count]}** đơn hàng mua cùng nhau)."
+                )
+            else:
+                st.info("Chưa tìm thấy cặp sản phẩm mua kèm phù hợp cho lựa chọn này.")
+
+        # Hiển thị bảng chi tiết các gợi ý
+        st.markdown("##### 📋 Bảng Chi Tiết Sản Phẩm Bán Kèm:")
+        display_df = recommendations[["Sản phẩm gợi ý bán kèm", col_count]].rename(
+            columns={col_count: "Tần Suất Mua Cùng Nhau (Lần)"}
+        )
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
