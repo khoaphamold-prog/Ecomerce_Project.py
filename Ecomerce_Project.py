@@ -414,9 +414,12 @@ with tab7:
     api_key = st.secrets.get("123456", api_key_input)
 
     if GEMINI_AVAILABLE and api_key:
-        try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
+        # xử lý model
+try:
+    model = genai.GenerativeModel("models/gemini-1.5-flash")
+except Exception:
+    model = genai.GenerativeModel("gemini-pro")
+
 
             # Ngữ cảnh dữ liệu cấp cho AI
             context_prompt = f"""
