@@ -411,7 +411,7 @@ with tab7:
     st.caption("Trò chuyện cùng AI để phân tích báo cáo dữ liệu Superstore real-time.")
 
     # Ưu tiên lấy API key từ Streamlit Secrets hoặc từ ô nhập ở Sidebar
-    api_key = st.secrets.get("GEMINI_API_KEY", api_key_input)
+    api_key = st.secrets.get("123456", api_key_input)
 
     if GEMINI_AVAILABLE and api_key:
         try:
