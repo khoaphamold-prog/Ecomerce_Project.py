@@ -421,10 +421,7 @@ with tab7:
             Nhiệm vụ: Trả lời ngắn gọn, súc tích bằng tiếng Việt, tập trung đề xuất giải pháp kinh doanh.
             """
 
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=system_instruction
-            )
+       model = genai.GenerativeModel('gemini-1.5-flash')
 
             # Khởi tạo phiên Chat Session duy trì bộ nhớ trong session_state
             if "chat_session" not in st.session_state:
