@@ -407,7 +407,6 @@ with tab7:
     if GEMINI_AVAILABLE and api_key:
         try:
             genai.configure(api_key=api_key)
-            model_name = "gemini-1.5-flash"
             
             system_instruction = f"""
             Bạn là Trợ lý AI Phân tích Kinh doanh chuyên nghiệp cho hệ thống Superstore E-Commerce.
@@ -421,7 +420,11 @@ with tab7:
             Nhiệm vụ: Trả lời ngắn gọn, súc tích bằng tiếng Việt, tập trung đề xuất giải pháp kinh doanh.
             """
 
-       model = genai.GenerativeModel('gemini-1.5-flash')
+            # Khởi tạo mô hình kèm system_instruction
+            model = genai.GenerativeModel(
+                model_name='gemini-1.5-flash',
+                system_instruction=system_instruction
+            )
 
             # Khởi tạo phiên Chat Session duy trì bộ nhớ trong session_state
             if "chat_session" not in st.session_state:
