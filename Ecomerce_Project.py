@@ -420,9 +420,29 @@ with tab7:
             Nhiệm vụ: Trả lời ngắn gọn, súc tích bằng tiếng Việt, tập trung đề xuất giải pháp kinh doanh.
             """
 
+            # Tự động quét và chọn mô hình Gemini khả dụng cho API Key của bạn
+            available_model = None
+            candidate_models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro']
+            
+            # 1. Thử lần lượt các mô hình ưu tiên
+            for m_name in candidate_models:
+                try:
+                    genai.GenerativeModel(model_name=m_name)
+                    available_model = m_name
+                    break
+                except Exception:
+                    continue
+
+            # 2. Nếu không có trong danh sách, lấy model đầu tiên hỗ trợ generateContent
+            if not available_model:
+                for m in genai.list_models():
+                    if 'generateContent' in m.supported_generation_methods:
+                        available_model = m.name.replace('models/', '')
+                        break
+
             # Khởi tạo mô hình kèm system_instruction
             model = genai.GenerativeModel(
-                model_name='gemini-2.5-flash',
+                model_name=available_model,
                 system_instruction=system_instruction
             )
 
