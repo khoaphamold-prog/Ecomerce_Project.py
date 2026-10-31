@@ -418,7 +418,7 @@ with tab7:
 
             # Đảm bảo chỉ khởi tạo Session Chat một lần duy nhất
             if "chat_session" not in st.session_state:
-                # Chọn mô hình gemini-2.5-flash làm mặc định
+                # Thay đổi model thành gemini-3.8-flash theo khuyến nghị mới của API
                 model = genai.GenerativeModel(
                     model_name="gemini-3.8-flash",
                     system_instruction=system_instruction
