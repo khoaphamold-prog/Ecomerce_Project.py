@@ -420,7 +420,7 @@ with tab7:
             if "chat_session" not in st.session_state:
                 # Chọn mô hình gemini-2.5-flash làm mặc định
                 model = genai.GenerativeModel(
-                    model_name="gemini-2.5-flash",
+                    model_name="gemini-3.8-flash",
                     system_instruction=system_instruction
                 )
                 st.session_state.chat_session = model.start_chat(history=[])
