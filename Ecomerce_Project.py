@@ -158,22 +158,18 @@ discount_cap = (
     st.sidebar.slider("Mức trần chiết khấu tối đa (%):", 0, 50, 20, 5) / 100.0
 )
 
-# Cấu hình API Key cho AI Chatbot
 st.sidebar.markdown("---")
 st.sidebar.header("🤖 Cấu hình AI Chatbot")
 api_key_input = st.sidebar.text_input(
     "🔑 Nhập Gemini API Key:", type="password", help="Dùng cho Tab Chatbot AI"
 )
 
+# Áp dụng bộ lọc toàn cục
 filtered_region = df_region.copy()
 if selected_region != "Tất cả":
-    filtered_region = filtered_region[
-        filtered_region["Region"] == selected_region
-    ]
+    filtered_region = filtered_region[filtered_region["Region"] == selected_region]
 if selected_category != "Tất cả":
-    filtered_region = filtered_region[
-        filtered_region["Category"] == selected_category
-    ]
+    filtered_region = filtered_region[filtered_region["Category"] == selected_category]
 
 # =========================================================
 # 4. KPI TỔNG QUAN
@@ -397,7 +393,7 @@ with tab6:
         ].sort_values(by="Times_Bought_Together", ascending=False)
         st.dataframe(pairs, use_container_width=True)
 
-# --- TAB 7: TRỢ LÝ AI CHATBOT (ĐÃ TỐI ƯU HÓA BỘ NHỚ HỘI THOẠI) ---
+# --- TAB 7: TRỢ LÝ AI CHATBOT (TỐI ƯU KHỞI TẠO SINGLETON) ---
 with tab7:
     st.subheader("💬 Trợ Lý AI Phân Tích Bán Hàng (Interactive Chat)")
     st.caption("Trò chuyện cùng AI có duy trì ngữ cảnh hội thoại (Multi-turn Chat) real-time.")
@@ -407,7 +403,7 @@ with tab7:
     if GEMINI_AVAILABLE and api_key:
         try:
             genai.configure(api_key=api_key)
-            
+
             system_instruction = f"""
             Bạn là Trợ lý AI Phân tích Kinh doanh chuyên nghiệp cho hệ thống Superstore E-Commerce.
             Dữ liệu tổng quan hiện tại của hệ thống:
@@ -420,37 +416,16 @@ with tab7:
             Nhiệm vụ: Trả lời ngắn gọn, súc tích bằng tiếng Việt, tập trung đề xuất giải pháp kinh doanh.
             """
 
-            # Tự động quét và chọn mô hình Gemini khả dụng cho API Key của bạn
-            available_model = None
-            candidate_models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro']
-            
-            # 1. Thử lần lượt các mô hình ưu tiên
-            for m_name in candidate_models:
-                try:
-                    genai.GenerativeModel(model_name=m_name)
-                    available_model = m_name
-                    break
-                except Exception:
-                    continue
-
-            # 2. Nếu không có trong danh sách, lấy model đầu tiên hỗ trợ generateContent
-            if not available_model:
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        available_model = m.name.replace('models/', '')
-                        break
-
-            # Khởi tạo mô hình kèm system_instruction
-            model = genai.GenerativeModel(
-                model_name=available_model,
-                system_instruction=system_instruction
-            )
-
-            # Khởi tạo phiên Chat Session duy trì bộ nhớ trong session_state
+            # Đảm bảo chỉ khởi tạo Session Chat một lần duy nhất
             if "chat_session" not in st.session_state:
+                # Chọn mô hình gemini-2.5-flash làm mặc định
+                model = genai.GenerativeModel(
+                    model_name="gemini-2.5-flash",
+                    system_instruction=system_instruction
+                )
                 st.session_state.chat_session = model.start_chat(history=[])
 
-            # Hiển thị lại lịch sử trò chuyện từ phiên chat của Gemini
+            # Hiển thị lịch sử trò chuyện
             for message in st.session_state.chat_session.history:
                 role = "user" if message.role == "user" else "assistant"
                 message_text = "".join([part.text for part in message.parts if hasattr(part, "text")])
